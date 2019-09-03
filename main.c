@@ -658,7 +658,7 @@ ascii2byte (uint8_t * val)
 **
 **---------------------------------------------------------------------------
 */
-SIGNAL (SIG_OUTPUT_COMPARE0)
+ISR (TIMER0_COMP_vect )
 {
     timestamp++;
     if (timestamp > 59999)
