@@ -391,7 +391,7 @@ transmit_CAN (void)
 
     // if transmit buffer is unlocked
     if ((StatusReg & _BV (TBS_Bit)) != _BV (TBS_Bit))
-        return ERROR;
+        return ERROR_BUSY;
 
     uint8_t temp_frame_info;
 
