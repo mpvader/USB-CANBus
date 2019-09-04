@@ -131,6 +131,7 @@ int main (void)
     uint8_t usb_rx_char;
 
     uint8_t i;			// for loop counter
+    uint8_t transmit_return = CR;
 
     sei ();			// enable global interrupts
 
@@ -182,26 +183,48 @@ int main (void)
             usb_putc (CR);
             CLEARBIT (CAN_flags, MSG_WAITING);
         }
-      
-        // read char from USB
-        usb_rx_char = usb_getc ();	// check for new chars from USB
-        if (usb_rx_char == CR)	// check for end of command
-        {
-            // Execute USB command and return status to terminal
-            usb_putc (exec_usb_cmd (cmd_buf));
-      
-            // flush command buffer
-            for (buf_ind = 0; buf_ind < CMD_BUFFER_LENGTH; buf_ind++)
-                cmd_buf[buf_ind] = 0x00;
-      
-            buf_ind = 0;	// point to start of command      
-        }
-        else if (usb_rx_char != 0)	// store new char in buffer
-        {
-            cmd_buf[buf_ind] = usb_rx_char;	// store char
-            // check for buffer overflow
-            if (buf_ind < sizeof (cmd_buf) - 1)
-                buf_ind++;
+
+        // if last send of a tx frame was not successful, retry to send
+        if(transmit_return == ERROR_BUSY) {
+            transmit_return = transmit_CAN();
+            if(transmit_return == CR) {
+                usb_putc(transmit_return);
+
+                // flush command buffer
+                for(buf_ind = 0; buf_ind < CMD_BUFFER_LENGTH; buf_ind++) {
+                    cmd_buf[buf_ind] = 0x00;
+                }
+
+                buf_ind = 0;    // point to start of command
+            }
+        } else {
+            if(!CHECKBIT (CAN_flags, TX_BUSY)) {
+                // read char from USB
+                usb_rx_char = usb_getc();    // check for new chars from USB
+                if(usb_rx_char == CR)    // check for end of command
+                {
+                    // Execute USB command and return status to terminal
+                    transmit_return = exec_usb_cmd(cmd_buf);
+                    if(transmit_return == CR || transmit_return == ERROR) {
+                        usb_putc(transmit_return);
+
+                        // flush command buffer
+                        for(buf_ind = 0; buf_ind < CMD_BUFFER_LENGTH; buf_ind++) {
+                            cmd_buf[buf_ind] = 0x00;
+                        }
+
+                        buf_ind = 0;    // point to start of command
+                    }
+
+                } else if(usb_rx_char != 0)    // store new char in buffer
+                {
+                    cmd_buf[buf_ind] = usb_rx_char;    // store char
+                    // check for buffer overflow
+                    if(buf_ind < sizeof(cmd_buf) - 1) {
+                        buf_ind++;
+                    }
+                }
+            }
         }
     }
 
@@ -395,8 +418,13 @@ exec_usb_cmd (uint8_t * cmd_buf)
             // send 11bit ID message
         case SEND_R11BIT_ID:
             // check if CAN controller is in reset mode or busy
-            if (!CHECKBIT (CAN_flags, BUS_ON) || CHECKBIT (CAN_flags, TX_BUSY))
+            if (!CHECKBIT (CAN_flags, BUS_ON))
                 return ERROR;
+
+            //check if CAN controller is busy
+            if (CHECKBIT (CAN_flags, TX_BUSY))
+                return ERROR_BUSY;
+
             // check valid cmd length (only 5 bytes for RTR)  
             if (cmd_len != 5)
                 return ERROR;
@@ -419,8 +447,12 @@ exec_usb_cmd (uint8_t * cmd_buf)
       
         case SEND_11BIT_ID:
             // check if CAN controller is in reset mode or busy
-            if (!CHECKBIT (CAN_flags, BUS_ON) || CHECKBIT (CAN_flags, TX_BUSY))
+            if (!CHECKBIT (CAN_flags, BUS_ON))
                 return ERROR;
+
+            //check if CAN controller is busy
+            if (CHECKBIT (CAN_flags, TX_BUSY))
+                return ERROR_BUSY;
       
             if ((cmd_len < 5) || (cmd_len > 21))
                 return ERROR;	// check valid cmd length
@@ -460,8 +492,12 @@ exec_usb_cmd (uint8_t * cmd_buf)
             // send 29bit ID message
         case SEND_R29BIT_ID:
             // check if CAN controller is in reset mode or busy
-            if (!CHECKBIT (CAN_flags, BUS_ON) || CHECKBIT (CAN_flags, TX_BUSY))
+            if (!CHECKBIT (CAN_flags, BUS_ON))
                 return ERROR;
+
+            //check if CAN controller is busy
+            if (CHECKBIT (CAN_flags, TX_BUSY))
+                return ERROR_BUSY;
       
             if (cmd_len != 10)
                 return ERROR;	// check valid cmd length
@@ -493,8 +529,12 @@ exec_usb_cmd (uint8_t * cmd_buf)
       
         case SEND_29BIT_ID:
             // check if CAN controller is in reset mode or busy
-            if (!CHECKBIT (CAN_flags, BUS_ON) || CHECKBIT (CAN_flags, TX_BUSY))
+            if (!CHECKBIT (CAN_flags, BUS_ON))
                 return ERROR;
+
+            //check if CAN controller is busy
+            if (CHECKBIT (CAN_flags, TX_BUSY))
+                return ERROR_BUSY;
       
             if ((cmd_len < 10) || (cmd_len > 26))
                 return ERROR;	// check valid cmd length
@@ -658,7 +698,7 @@ ascii2byte (uint8_t * val)
 **
 **---------------------------------------------------------------------------
 */
-SIGNAL (SIG_OUTPUT_COMPARE0)
+ISR (TIMER0_COMP_vect )
 {
     timestamp++;
     if (timestamp > 59999)

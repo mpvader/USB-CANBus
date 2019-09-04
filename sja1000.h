@@ -397,7 +397,8 @@ Interrupt Enable & Control Register */
 #endif
 
 #if !defined(ERROR)
-#define ERROR    7
+#define ERROR		7
+#define ERROR_BUSY	(ERROR + 0x80)
 #endif
 
 #define LED_TCNT_VALUE (255-(unsigned char)((unsigned long)(CAN_LED_ONTIME*1000L) / (1000000L / (float)((unsigned long)F_CPU / 1024L))))

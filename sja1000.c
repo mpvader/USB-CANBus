@@ -243,7 +243,7 @@ init_CAN (void)
 **
 **---------------------------------------------------------------------------
 */
-SIGNAL (SIG_INTERRUPT0)
+ISR ( INT0_vect )
 {
     // read SJA1000 interrupt register
     uint8_t temp_int_reg;
@@ -391,7 +391,7 @@ transmit_CAN (void)
 
     // if transmit buffer is unlocked
     if ((StatusReg & _BV (TBS_Bit)) != _BV (TBS_Bit))
-        return ERROR;
+        return ERROR_BUSY;
 
     uint8_t temp_frame_info;
 
@@ -543,7 +543,7 @@ CAN_LED (uint8_t led_no)
 **
 **---------------------------------------------------------------------------
 */
-SIGNAL (SIG_OVERFLOW2)
+ISR ( TIMER2_OVF_vect )
 {
     TCCR2 = 0;			// stop timer
     TIMSK &= ~_BV (TOIE2);	// disable overflow interrupt

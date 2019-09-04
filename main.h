@@ -33,7 +33,7 @@
 #define HW_VER        0x10		// hardware version
 #define SW_VER        0x10		// software version
 #define SW_VER_MAJOR  0x01    // software major version
-#define SW_VER_MINOR  0x09    // software minor version
+#define SW_VER_MINOR  0x10    // software minor version
 #define SERIAL        "0001"	// device serial number
 
 #if !defined(CR)
